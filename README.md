@@ -36,9 +36,8 @@ py_gcf_local(src, data, requirements, environment, entrypoint)
 Provides a `bash` script to run a GCF on a local port, simulating the
 environment on GCP.
 
-Attributes:
-
-| ----- | ----- |
+| Attribute | Description |
+| --------- | ----------- |
 | `src` |  `Label; required` <br><br> The `py_binary` target that contains the GCF source |
 | `entrypoint` | `String; required` <br><br> The name of the function that is the central entrypoint for the GCF. |
 | `data` | `List of labels; optional` <br><br> Any data dependencies to link in. Data dependencies from the `src` label are copied in. |
@@ -53,9 +52,8 @@ py_gcf_deploy(src, data, requirements, environment, function_name, service_accou
 
 Provides a `bash` script to deploy a GCF with specific `gcloud` arguments.
 
-Attributes:
-
-| ----- | ----- |
+| Attribute | Description |
+| --------- | ----------- |
 | `src` |  `Label; required` <br><br> The `py_binary` target that contains the GCF source |
 | `entrypoint` | `String; required` <br><br> The name of the function that is the central entrypoint for the GCF. |
 | `function_name` | `String; required` <br><br> What to name the deployed GCF function on GCP. |
