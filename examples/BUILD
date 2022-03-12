@@ -1,5 +1,4 @@
 load("@gcf-bazel//:rules.bzl", "py_gcf_local", "py_gcf_deploy")
-# load("@gcf-bazel//rules:gcf.bzl", "py_gcf_local", "py_gcf_deploy")
 
 py_binary(
     name = "echo",
