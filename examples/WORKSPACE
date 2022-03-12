@@ -1,0 +1,6 @@
+workspace(name = "gcf-bazel-examples")
+
+local_repository(
+    name = "gcf-bazel",
+    path = "../",
+)
