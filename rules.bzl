@@ -93,6 +93,14 @@ def _service_account_check(maybe_sa):
 '''.format(service_account=maybe_sa)
 
 
+# Get the Python code to call the entrypoint with.
+#
+# This switches between handling HTTP or Pub/Sub inputs.
+def _get_call_code(is_pubsub):
+  if is_pubsub:
+    return "return __ENTRYPOINT(dict(data=request.data), {})"
+  return "return __ENTRYPOINT(request)"
+
 # Create a test script to validate the function locally.
 def _py_gcf_local_impl(ctx):
   # Create a bash script that deploys the binary contents.
@@ -138,7 +146,7 @@ def main(port='8080'):
 
   @app.endpoint('index')
   def index(*args, **kwargs):
-    return __ENTRYPOINT(request)
+    {call_code}
 
   app.run(port=port)
 
@@ -152,6 +160,7 @@ chmod +x "${{SRC_TMP?}}/main.py"
           module='%s.%s' %
           (ctx.label.package.replace('/', '.'), ctx.attr.src.label.name),
           entrypoint=ctx.attr.entrypoint,
+          call_code=_get_call_code(ctx.attr.is_pubsub),
       ))
 
   # Collect runtime files to bundle with the deploy.
@@ -239,6 +248,7 @@ py_gcf_local = rule(
         'requirements': attr.label(allow_single_file=True),
         'environment': attr.label(allow_single_file=True),
         'entrypoint': attr.string(mandatory=True),
+        'is_pubsub': attr.bool(default=False),
     },
     executable=True,
 )

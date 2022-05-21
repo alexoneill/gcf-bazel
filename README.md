@@ -30,7 +30,7 @@ for the functions explored below.
 #### `py_gcf_local`
 
 ```
-py_gcf_local(src, data, requirements, environment, entrypoint)
+py_gcf_local(src, data, requirements, environment, entrypoint, is_pubsub)
 ```
 
 Provides a `bash` script to run a GCF on a local port, simulating the
@@ -43,6 +43,7 @@ environment on GCP.
 | `data` | `List of labels; optional` <br><br> Any data dependencies to link in. Data dependencies from the `src` label are copied in. |
 | `requirements` | `Label; optional` <br><br> Optionally provide the name of the `requirements.txt` file to use within the GCF runtime to install external Python packages. |
 | `environment` | `Label; optional` <br><br> Optionally provide the name of the `env.yaml` file to populate environment variables within the local process. |
+| `is_pubsub` | `Label; optional` <br><br> Optionally indicate if the given function entrypoint is for a Pub/Sub triggered function. Defaults to `False`, but if `True`, the entrypoint method will be called with a dictionary for the first argument (whose only key, `'data'` will be populated with the contents of any `POST`-ed bytes to the local GCF function) and an empty `object()` for the second argument. |
 
 #### `py_gcf_deploy`
 
