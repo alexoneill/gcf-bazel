@@ -98,8 +98,8 @@ def _service_account_check(maybe_sa):
 # This switches between handling HTTP or Pub/Sub inputs.
 def _get_call_code(is_pubsub):
   if is_pubsub:
-    return "return __ENTRYPOINT(dict(data=request.data), object())"
-  return "return __ENTRYPOINT(request)"
+    return "return __ENTRYPOINT(dict(data=request.data), object()) or ''"
+  return "return __ENTRYPOINT(request) or ''"
 
 # Create a test script to validate the function locally.
 def _py_gcf_local_impl(ctx):
