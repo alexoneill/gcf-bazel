@@ -86,8 +86,9 @@ def _service_account_check(maybe_sa):
 
   return '''
 # Search for the service account.
-! ACCT=$(gcloud iam service-accounts list \\
-  | awk '/{service_account}/ {{ print $2; }}') \\
+! ACCT=$(gcloud iam service-accounts list --format 'csv(email)' \\
+  | tail -n +2 \\
+  | grep '{service_account}') \\
   && echo 'err: Could not find service account "{service_account}"' \\
   && return 1
 '''.format(service_account=maybe_sa)
