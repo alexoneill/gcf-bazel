@@ -213,8 +213,8 @@ gcloud functions deploy \\
   --runtime=python39 \\
   --source="${{SRC_TMP?}}" \\
   --env-vars-file="${{ENV_PATH?}}" \\''' +
-       ('--service-account=${{ACCT?}} \\' if ctx.attr.service_account else '') +
-       '''
+       ('''
+  --service-account=${{ACCT?}} \\''' if ctx.attr.service_account else '') + '''
   --entry-point={entrypoint} \\
   "${{@}}" \\
   {name}
