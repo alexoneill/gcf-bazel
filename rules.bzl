@@ -132,7 +132,8 @@ def main(port='8080'):
   # Load environment variables.
   env = load(open("${{ENV_PATH?}}"), Loader=FullLoader)
   for var in env:
-    os.environ[var] = env[var]
+    if env[var] is not None:
+      os.environ[var] = env[var]
 
   # Overwrite environment to be development.
   os.environ['FLASK_ENV'] = 'development'
