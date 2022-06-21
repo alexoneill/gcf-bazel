@@ -1,5 +1,3 @@
 # Needed for these rules to work properly.
-#
-# See README.md
 build --build_python_zip
 run --build_python_zip

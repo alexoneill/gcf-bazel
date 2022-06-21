@@ -64,6 +64,25 @@ Provides a `bash` script to deploy a GCF with specific `gcloud` arguments.
 | `service_account` | `String; optional` <br><br> Provide the name of the Service Account to run the GCF as on GCP. |
 | `args` | `List of strings; optional` <br><br> Provide additional arguments to `gcloud` not covered by the above (e.g. `--region`). Do not specify any of the following: `--runtime`, `--source`, `--env-vars-file`, `--service-account`, `--entry-point` |
 
+#### `py_gcp_run_deploy`
+
+```
+py_gcp_run_deploy(src, data, requirements, dockerfile, environment, run_name, service_account)
+```
+
+Provides a `bash` script to deploy a GCP Run with specific `gcloud` arguments.
+
+| Attribute | Description |
+| --------- | ----------- |
+| `src` |  `Label; required` <br><br> The `py_binary` target that contains the GCP Run source |
+| `run_name` | `String; required` <br><br> What to name the deployed GCP Run on GCP. |
+| `data` | `List of labels; optional` <br><br> Any data dependencies to link in. Data dependencies from the `src` label are copied in. |
+| `requirements` | `Label; optional` <br><br> Provide the name of the `requirements.txt` file to use within the GCP Run runtime to install external Python packages. |
+| `dockerfile` | `Label; optional` <br><br> Provide the name of the `Dockerfile` to use within the GCP Run runtime to configure the underlying Docker container. This Dockerfile should reference `main:app` as the entry point regardless of the name of the `py_binary` in the `src` attribute. |
+| `environment` | `Label; optional` <br><br> Provide the name of the `env.yaml` file to to use within the GCP Run runtime to populate default environment variables. |
+| `service_account` | `String; optional` <br><br> Provide the name of the Service Account to run the GCP Run as on GCP. |
+| `args` | `List of strings; optional` <br><br> Provide additional arguments to `gcloud` not covered by the above (e.g. `--region`). Do not specify any of the following: `--source`, `--env-vars-file`, `--service-account` |
+
 ## Examples
 
 See the `examples` folder for concrete usage examples.

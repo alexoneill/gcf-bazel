@@ -191,7 +191,7 @@ cp "{reqs}" "${{SRC_TMP?}}/requirements.txt"
 '''.format(reqs=maybe_requirements.path)
 
 
-# Create a deploy script for the Python binary to use it on GCP.
+# Create a deploy script for the Python binary to use it on GCP's Functions.
 def _py_gcf_deploy_impl(ctx):
   # Create a bash script that deploys the binary contents.
   executable = ctx.actions.declare_file(ctx.label.name + '.sh')
@@ -241,7 +241,68 @@ gcloud functions deploy \\
   ]
 
 
-# Rule to test a python_binary rule as a local GCP Cloud Function.
+# Logic to inject the "Dockerfile" file into the root of the output. Used for
+# py_gcp_run_deploy below.
+def _inject_dockerfile(maybe_dockerfile):
+  if maybe_dockerfile == None:
+    return ''
+
+  return '''\
+# Copy the Dockerfile.
+cp "{df}" "${{SRC_TMP?}}/Dockerfile"
+'''.format(df=maybe_dockerfile.path)
+
+
+# Create a deploy script for the Python binary to use it on GCP's Cloud Run.
+def _py_gcp_run_deploy_impl(ctx):
+  # Create a bash script that deploys the binary contents.
+  executable = ctx.actions.declare_file(ctx.label.name + '.sh')
+  ctx.actions.write(
+      output=executable,
+      content=_zip_entry(
+          ctx, '%s/%s.zip' % (ctx.label.package, ctx.attr.src.label.name)) +
+      _inject_env(ctx.file.environment) +
+      _inject_requirements(ctx.file.requirements) +
+      _inject_dockerfile(ctx.file.dockerfile) + '''
+# Check gcloud.
+! gcloud auth print-access-token >/dev/null 2>&1 \\
+  && echo 'err: Check your gcloud' \\
+  && return 1
+''' + _service_account_check(ctx.attr.service_account) +
+      ('''
+# Place a dummy root file.
+echo "from {module} import *" > "${{SRC_TMP?}}/main.py"
+
+# Deploy the function.
+gcloud run deploy \\
+  {name} \\
+  --source="${{SRC_TMP?}}" \\
+  --env-vars-file="${{ENV_PATH?}}" \\''' +
+       ('''
+  --service-account=${{ACCT?}} \\''' if ctx.attr.service_account else '') + '''
+  "${{@}}"
+''').format(
+           module='%s.%s' %
+           (ctx.label.package.replace('/', '.'), ctx.attr.src.label.name),
+           name=ctx.attr.run_name,
+       ))
+
+  # Collect runtime files to bundle with the deploy.
+  runfiles = ctx.runfiles(
+      files=ctx.files.data +
+      ([ctx.file.environment] if ctx.file.environment else []) +
+      ([ctx.file.dockerfile] if ctx.file.dockerfile else []) +
+      ([ctx.file.requirements] if ctx.file.requirements else []))
+  runfiles = runfiles.merge(ctx.attr.src[DefaultInfo].default_runfiles)
+  for target in ctx.attr.data:
+    runfiles = runfiles.merge(target[DefaultInfo].default_runfiles)
+
+  return [
+      DefaultInfo(executable=executable, runfiles=runfiles),
+  ]
+
+
+# Rule to test a py_binary rule as a local GCP Cloud Function.
 py_gcf_local = rule(
     implementation=_py_gcf_local_impl,
     attrs={
@@ -255,7 +316,7 @@ py_gcf_local = rule(
     executable=True,
 )
 
-# Rule to deploy a python_binary rule onto GCP's Cloud Function product.
+# Rule to deploy a py_binary rule onto GCP's Cloud Function product.
 py_gcf_deploy = rule(
     implementation=_py_gcf_deploy_impl,
     attrs={
@@ -266,6 +327,21 @@ py_gcf_deploy = rule(
         'function_name': attr.string(mandatory=True),
         'service_account': attr.string(),
         'entrypoint': attr.string(mandatory=True),
+    },
+    executable=True,
+)
+
+# Rule to deploy a py_binary rule onto GCP's Cloud Run product.
+py_gcp_run_deploy = rule(
+    implementation=_py_gcp_run_deploy_impl,
+    attrs={
+        'src': attr.label(mandatory=True),
+        'data': attr.label_list(allow_files=True),
+        'requirements': attr.label(allow_single_file=True),
+        'environment': attr.label(allow_single_file=True),
+        'dockerfile': attr.label(allow_single_file=True),
+        'run_name': attr.string(mandatory=True),
+        'service_account': attr.string(),
     },
     executable=True,
 )
