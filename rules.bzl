@@ -90,7 +90,7 @@ def _service_account_check(maybe_sa):
   | tail -n +2 \\
   | grep '^{service_account}@') \\
   && echo 'err: Could not find service account "{service_account}"' \\
-  && return 1
+  && exit 1
 '''.format(service_account=maybe_sa)
 
 
@@ -204,7 +204,7 @@ def _py_gcf_deploy_impl(ctx):
 # Check gcloud.
 ! gcloud auth print-access-token >/dev/null 2>&1 \\
   && echo 'err: Check your gcloud' \\
-  && return 1
+  && exit 1
 ''' + _service_account_check(ctx.attr.service_account) +
       ('''
 # Place a dummy root file with the right entrypoint.
@@ -267,7 +267,7 @@ def _py_gcp_run_deploy_impl(ctx):
 # Check gcloud.
 ! gcloud auth print-access-token >/dev/null 2>&1 \\
   && echo 'err: Check your gcloud' \\
-  && return 1
+  && exit 1
 ''' + _service_account_check(ctx.attr.service_account) +
       ('''
 # Place a dummy root file.
