@@ -1,3 +1,5 @@
+import cowsay
+
 # Primary entrypoint for the echo server.
 def main(request):
   '''Responds to any HTTP request.
@@ -9,4 +11,4 @@ def main(request):
     The response text or any set of values that can be turned into a Response
     object using 'flask.Flask.make_response'
   '''
-  return request.get_data()
+  return cowsay.cow(request.get_data())

@@ -9,12 +9,14 @@ py_binary(
 py_gcf_local(
     name = "echo_local",
     src = ":echo",
+    requirements = "requirements.txt",
     entrypoint = 'main',
 )
 
 py_gcf_deploy(
     name = "echo_deploy",
     src = ":echo",
+    requirements = "requirements.txt",
     function_name = "echo",
     entrypoint = 'main',
     args = [

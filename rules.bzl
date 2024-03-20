@@ -68,6 +68,15 @@ def _install_requirements(maybe_requirements):
     return ''
 
   return '''\
+# Install dependencies under a virtualenv.
+VENV_HASH="$(md5sum <<< "${{BASE}}" | awk '{{ print $1; }}')"
+VENV_TMP="/var/tmp/_gcf_bazel_${{USER}}/${{VENV_HASH}}"
+mkdir -p "${{VENV_TMP}}"
+
+echo "Activating virtualenv: ${{VENV_TMP}}"
+python3 -m venv "${{VENV_TMP}}"
+source "${{VENV_TMP}}/bin/activate"
+
 # Install dependencies.
 if ! python3 -c \\
       "import pkg_resources;pkg_resources.require(open('"${{BASE?}}/{reqs}"'))" \\
