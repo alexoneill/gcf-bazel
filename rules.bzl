@@ -6,6 +6,8 @@
 def _zip_entry(ctx, zipfile):
   return '''\
 #!/bin/bash
+set -e
+
 DIR="$(cd "$(dirname "${{BASH_SOURCE[0]}}")" &> /dev/null && pwd)"
 BASE="${{DIR??}}/$(basename "${{BASH_SOURCE[0]}}").runfiles/{workspace_name}"
 
@@ -22,6 +24,8 @@ SRC_TMP="${{SRC_TMP?}}/runfiles/{workspace_name}"
 def _symlink_entry(ctx):
   return '''\
 #!/bin/bash
+set -e
+
 DIR="$(cd "$(dirname "${{BASH_SOURCE[0]}}")" &> /dev/null && pwd)"
 BASE="${{DIR??}}/$(basename "${{BASH_SOURCE[0]}}").runfiles/{workspace_name}"
 
@@ -34,17 +38,17 @@ cp -r "${{BASE}}/"* "${{SRC_TMP}}"
 # Logic to run the build scripts in a Python virtualenv.
 def _activate_virtualenv():
   return '''\
-VENV_HASH="$(md5sum <<< "${{BASE}}" | awk '{{ print $1; }}')"
-VENV_TMP="/var/tmp/_gcf_bazel_${{USER}}/${{VENV_HASH}}"
-mkdir -p "${{VENV_TMP}}"
+VENV_HASH="$(md5sum <<< "${BASE}" | awk '{ print $1; }')"
+VENV_TMP="/var/tmp/_gcf_bazel_${USER}/${VENV_HASH}"
+mkdir -p "${VENV_TMP}"
 
-echo "Activating virtualenv: ${{VENV_TMP}}"
-python3 -m venv "${{VENV_TMP}}"
-source "${{VENV_TMP}}/bin/activate"
+echo "Activating virtualenv: ${VENV_TMP}"
+python3 -m venv "${VENV_TMP}"
+source "${VENV_TMP}/bin/activate"
 
 # Install dependencies under a virtualenv.
 python3 -m ensurepip
-python3 -m pip install flask pyyaml >/dev/null
+python3 -m pip install flask pyyaml &>/dev/null
 '''
 
 
@@ -53,9 +57,11 @@ python3 -m pip install flask pyyaml >/dev/null
 def _inject_env(maybe_env):
   if maybe_env == None:
     return '''\
-# Insert a value for GCP_PROJECT (for compatibility with newer runtimes).
 PROJECT=$(gcloud config get-value project)
 ENV_PATH="${SRC_TMP?}/env.yaml"
+
+# Insert a value for GCP_PROJECT (for compatibility with newer runtimes).
+echo "Using GCP Project: ${PROJECT}"
 cat << EOF > "${ENV_PATH?}"
 # Project and environment.
 GCP_PROJECT: ${PROJECT?}
@@ -67,20 +73,26 @@ EOF
 # Copy the existing env over.
 ENV_PATH="${{SRC_TMP?}}/env.yaml"
 cp "${{BASE?}}/{env}" "${{ENV_PATH?}}"
+cat << EOF >> "${{ENV_PATH?}}"
+
+# Environment.
+FLASK_ENV: production
+EOF
 
 # If there is a project configured in the env file, use that for the deployment
 # command, else default to what is ambiently configured in the runtime.
-PROJECT="$(python3 -c 'import yaml; print(yaml.load(open("${{ENV_PATH?}}"), '`
-                        `'Loader=yaml.FullLoader).get("GCP_PROJECT", ""))')"
-[[ -z "${{PROJECT}}" ]] && PROJECT=$(gcloud config get-value project)
+PROJECT="$(python3 -c "import yaml; print(yaml.load(open('${{ENV_PATH?}}'), "`
+                        `"Loader=yaml.FullLoader).get('GCP_PROJECT', ''))")"
+if [[ -z "${{PROJECT}}" ]]; then
+  PROJECT=$(gcloud config get-value project)
 
-# Insert a value for GCP_PROJECT (for compatibility with newer runtimes).
-cat << EOF >> "${{ENV_PATH?}}"
-
-# Project and environment.
+  # Insert a value for GCP_PROJECT (for compatibility with newer runtimes).
+  cat << EOF >> "${{ENV_PATH?}}"
 GCP_PROJECT: ${{PROJECT?}}
-FLASK_ENV: production
 EOF
+fi
+
+echo "Using GCP Project: ${{PROJECT}}"
 '''.format(env=maybe_env.path)
 
 
@@ -95,8 +107,8 @@ def _install_requirements(maybe_requirements):
 if ! python3 -c \\
       "import pkg_resources;pkg_resources.require(open('"${{BASE?}}/{reqs}"'))" \\
       2>/dev/null; then
-  python3 -m pip install -r "${{BASE?}}/{reqs}" >/dev/null
-  python3 -m pip install flask pyyaml >/dev/null
+  python3 -m pip install -r "${{BASE?}}/{reqs}" &>/dev/null
+  python3 -m pip install flask pyyaml &>/dev/null
 fi
 '''.format(reqs=maybe_requirements.path)
 
@@ -229,7 +241,7 @@ def _py_gcf_deploy_impl(ctx):
       _inject_env(ctx.file.environment) +
       _inject_requirements(ctx.file.requirements) + '''
 # Check gcloud.
-! gcloud --project "${{PROJECT?}}" auth print-access-token >/dev/null 2>&1 \\
+! gcloud --project "${PROJECT?}" auth print-access-token >/dev/null 2>&1 \\
   && echo 'err: Check your gcloud' \\
   && exit 1
 ''' + _service_account_check(ctx.attr.service_account) +
@@ -294,7 +306,7 @@ def _py_gcp_run_deploy_impl(ctx):
       _inject_requirements(ctx.file.requirements) +
       _inject_dockerfile(ctx.file.dockerfile) + '''
 # Check gcloud.
-! gcloud --project "${{PROJECT?}}" \\
+! gcloud --project "${PROJECT?}" \\
     auth print-access-token >/dev/null 2>&1 \\
   && echo 'err: Check your gcloud' \\
   && exit 1
