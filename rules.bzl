@@ -31,6 +31,23 @@ cp -r "${{BASE}}/"* "${{SRC_TMP}}"
 '''.format(workspace_name=ctx.workspace_name)
 
 
+# Logic to run the build scripts in a Python virtualenv.
+def _activate_virtualenv():
+  return '''\
+VENV_HASH="$(md5sum <<< "${{BASE}}" | awk '{{ print $1; }}')"
+VENV_TMP="/var/tmp/_gcf_bazel_${{USER}}/${{VENV_HASH}}"
+mkdir -p "${{VENV_TMP}}"
+
+echo "Activating virtualenv: ${{VENV_TMP}}"
+python3 -m venv "${{VENV_TMP}}"
+source "${{VENV_TMP}}/bin/activate"
+
+# Install dependencies under a virtualenv.
+python3 -m ensurepip
+python3 -m pip install flask pyyaml >/dev/null
+'''
+
+
 # Logic to inject the "env.yaml" file into the root of the output. Used for
 # both deploy and local execution.
 def _inject_env(maybe_env):
@@ -68,15 +85,6 @@ def _install_requirements(maybe_requirements):
     return ''
 
   return '''\
-# Install dependencies under a virtualenv.
-VENV_HASH="$(md5sum <<< "${{BASE}}" | awk '{{ print $1; }}')"
-VENV_TMP="/var/tmp/_gcf_bazel_${{USER}}/${{VENV_HASH}}"
-mkdir -p "${{VENV_TMP}}"
-
-echo "Activating virtualenv: ${{VENV_TMP}}"
-python3 -m venv "${{VENV_TMP}}"
-source "${{VENV_TMP}}/bin/activate"
-
 # Install dependencies.
 if ! python3 -c \\
       "import pkg_resources;pkg_resources.require(open('"${{BASE?}}/{reqs}"'))" \\
@@ -117,7 +125,9 @@ def _py_gcf_local_impl(ctx):
   executable = ctx.actions.declare_file(ctx.label.name + '.sh')
   ctx.actions.write(
       output=executable,
-      content=_symlink_entry(ctx) + _inject_env(ctx.file.environment) +
+      content=_symlink_entry(ctx) +
+      _activate_virtualenv() +
+      _inject_env(ctx.file.environment) +
       _install_requirements(ctx.file.requirements) + '''
 # Place a suitable test harness in.
 cat << EOF > "${{SRC_TMP?}}/main.py"
@@ -208,6 +218,7 @@ def _py_gcf_deploy_impl(ctx):
       output=executable,
       content=_zip_entry(
           ctx, '%s/%s.zip' % (ctx.label.package, ctx.attr.src.label.name)) +
+      _activate_virtualenv() +
       _inject_env(ctx.file.environment) +
       _inject_requirements(ctx.file.requirements) + '''
 # Check gcloud.
@@ -270,6 +281,7 @@ def _py_gcp_run_deploy_impl(ctx):
       output=executable,
       content=_zip_entry(
           ctx, '%s/%s.zip' % (ctx.label.package, ctx.attr.src.label.name)) +
+      _activate_virtualenv() +
       _inject_env(ctx.file.environment) +
       _inject_requirements(ctx.file.requirements) +
       _inject_dockerfile(ctx.file.dockerfile) + '''
