@@ -64,11 +64,17 @@ EOF
 '''
 
   return '''\
-# Insert a value for GCP_PROJECT (for compatibility with newer runtimes).
+# Copy the existing env over.
 ENV_PATH="${{SRC_TMP?}}/env.yaml"
 cp "${{BASE?}}/{env}" "${{ENV_PATH?}}"
 
-PROJECT=$(gcloud config get-value project)
+# If there is a project configured in the env file, use that for the deployment
+# command, else default to what is ambiently configured in the runtime.
+PROJECT="$(python3 -c 'import yaml; print(yaml.load(open("${{ENV_PATH?}}"), '`
+                        `'Loader=yaml.FullLoader).get("GCP_PROJECT", ""))')"
+[[ -z "${{PROJECT}}" ]] && PROJECT=$(gcloud config get-value project)
+
+# Insert a value for GCP_PROJECT (for compatibility with newer runtimes).
 cat << EOF >> "${{ENV_PATH?}}"
 
 # Project and environment.
@@ -103,7 +109,8 @@ def _service_account_check(maybe_sa):
 
   return '''
 # Search for the service account.
-! ACCT=$(gcloud iam service-accounts list --format 'csv(email)' \\
+! ACCT=$(gcloud --project "${{PROJECT?}}" \\
+    iam service-accounts list --format 'csv(email)' \\
   | tail -n +2 \\
   | grep '^{service_account}@') \\
   && echo 'err: Could not find service account "{service_account}"' \\
@@ -222,7 +229,7 @@ def _py_gcf_deploy_impl(ctx):
       _inject_env(ctx.file.environment) +
       _inject_requirements(ctx.file.requirements) + '''
 # Check gcloud.
-! gcloud auth print-access-token >/dev/null 2>&1 \\
+! gcloud --project "${{PROJECT?}}" auth print-access-token >/dev/null 2>&1 \\
   && echo 'err: Check your gcloud' \\
   && exit 1
 ''' + _service_account_check(ctx.attr.service_account) +
@@ -231,7 +238,8 @@ def _py_gcf_deploy_impl(ctx):
 echo "from {module} import {entrypoint}" > "${{SRC_TMP?}}/main.py"
 
 # Deploy the function.
-gcloud functions deploy \\
+gcloud --project "${{PROJECT?}}" \\
+  functions deploy \\
   --runtime=python39 \\
   --source="${{SRC_TMP?}}" \\
   --env-vars-file="${{ENV_PATH?}}" \\''' +
@@ -286,7 +294,8 @@ def _py_gcp_run_deploy_impl(ctx):
       _inject_requirements(ctx.file.requirements) +
       _inject_dockerfile(ctx.file.dockerfile) + '''
 # Check gcloud.
-! gcloud auth print-access-token >/dev/null 2>&1 \\
+! gcloud --project "${{PROJECT?}}" \\
+    auth print-access-token >/dev/null 2>&1 \\
   && echo 'err: Check your gcloud' \\
   && exit 1
 ''' + _service_account_check(ctx.attr.service_account) +
@@ -295,7 +304,8 @@ def _py_gcp_run_deploy_impl(ctx):
 echo "from {module} import *" > "${{SRC_TMP?}}/main.py"
 
 # Deploy the function.
-gcloud run deploy \\
+gcloud --project "${{PROJECT?}}" \\
+ run deploy \\
   {name} \\
   --source="${{SRC_TMP?}}" \\
   --env-vars-file="${{ENV_PATH?}}" \\''' +
