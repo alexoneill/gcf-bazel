@@ -85,13 +85,14 @@ PROJECT="$(python3 -c "import yaml; print(yaml.load(open('${{ENV_PATH?}}'), "`
                         `"Loader=yaml.FullLoader).get('GCP_PROJECT', ''))")"
 if [[ -z "${{PROJECT}}" ]]; then
   PROJECT=$(gcloud config get-value project)
-fi
 
-# Insert a value for GCP_PROJECT (for compatibility with newer runtimes).
-echo "Using GCP Project: ${{PROJECT}}"
-cat << EOF >> "${{ENV_PATH?}}"
+  # Insert a value for GCP_PROJECT (for compatibility with newer runtimes).
+  cat << EOF >> "${{ENV_PATH?}}"
 GCP_PROJECT: ${{PROJECT?}}
 EOF
+fi
+
+echo "Using GCP Project: ${{PROJECT}}"
 '''.format(env=maybe_env.path)
 
 
