@@ -252,7 +252,7 @@ echo "from {module} import {entrypoint}" > "${{SRC_TMP?}}/main.py"
 # Deploy the function.
 gcloud --project "${{PROJECT?}}" \\
   functions deploy \\
-  --runtime=python39 \\
+  --runtime={runtime} \\
   --source="${{SRC_TMP?}}" \\
   --env-vars-file="${{ENV_PATH?}}" \\''' +
        ('''
@@ -265,6 +265,7 @@ gcloud --project "${{PROJECT?}}" \\
            (ctx.label.package.replace('/', '.'), ctx.attr.src.label.name),
            entrypoint=ctx.attr.entrypoint,
            name=ctx.attr.function_name,
+           runtime=ctx.attr.runtime,
        ))
 
   # Collect runtime files to bundle with the deploy.
@@ -370,6 +371,7 @@ py_gcf_deploy = rule(
         'function_name': attr.string(mandatory=True),
         'service_account': attr.string(),
         'entrypoint': attr.string(mandatory=True),
+        'runtime': attr.string(mandatory=True),
     },
     executable=True,
 )

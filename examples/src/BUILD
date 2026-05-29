@@ -19,6 +19,7 @@ py_gcf_deploy(
     requirements = "requirements.txt",
     function_name = "echo",
     entrypoint = 'main',
+    runtime = 'python39',
     args = [
         '--allow-unauthenticated',
         '--region=us-central1',
@@ -44,6 +45,7 @@ py_gcf_deploy(
     src = ":pubsub",
     function_name = "pubsub",
     entrypoint = 'main',
+    runtime = 'python39',
     args = [
         '--region=us-central1',
         '--trigger-topic=my-topic',
